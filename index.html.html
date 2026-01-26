@@ -1,0 +1,2033 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Controle Financeiro Cloud</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://unpkg.com/xlsx/dist/xlsx.full.min.js"></script>
+    <style>
+        :root {
+            /* Cores do tema claro (padrão) - MAIS COLORIDAS E ATRATIVAS */
+            --primary: #4361ee; /* Azul vibrante */
+            --secondary: #3a0ca3; /* Roxo profundo */
+            --income: #2ecc71; /* Verde vivo */
+            --expense: #e74c3c; /* Vermelho vivo */
+            --warning: #f39c12; /* Laranja */
+            --goal: #9b59b6; /* Roxo médio */
+            --data: #3498db; /* Azul claro */
+            --success: #1abc9c; /* Turquesa */
+            --bg: #f8fafc;
+            --card-bg: #ffffff;
+            --text: #2d3436;
+            --text-light: #636e72;
+            --border: #dfe6e9;
+            --shadow: rgba(0, 0, 0, 0.1);
+        }
+
+        /* Tema escuro */
+        .dark-theme {
+            --primary: #6c5ce7; /* Roxo azulado */
+            --secondary: #a29bfe; /* Roxo claro */
+            --income: #00b894; /* Verde esmeralda */
+            --expense: #e17055; /* Laranja salmão */
+            --warning: #fdcb6e; /* Amarelo dourado */
+            --goal: #a29bfe; /* Roxo claro */
+            --data: #74b9ff; /* Azul claro */
+            --success: #00cec9; /* Turquesa */
+            --bg: #1a1a2e; /* Azul muito escuro */
+            --card-bg: #16213e; /* Azul escuro */
+            --text: #e2e8f0; /* Cinza claro */
+            --text-light: #94a3b8; /* Cinza médio */
+            --border: #2d3748; /* Cinza escuro */
+            --shadow: rgba(0, 0, 0, 0.3);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', system-ui, sans-serif; }
+        body { background-color: var(--bg); color: var(--text); height: 100vh; overflow: hidden; transition: background-color 0.3s, color 0.3s; }
+        
+        /* Topbar */
+        .topbar { 
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%); 
+            padding: 0 20px; display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; 
+            height: 70px; color: white; box-shadow: 0 4px 15px var(--shadow);
+            position: sticky; top: 0; z-index: 1000;
+            transition: background 0.3s;
+        }
+        .topbar-left { display: flex; align-items: center; gap: 15px; }
+        .btn-icon { font-size: 1.2rem; cursor: pointer; opacity: 0.8; transition: 0.3s; }
+        .btn-icon:hover { opacity: 1; }
+        .topbar-center h1 { font-size: 1.3rem; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; }
+        .topbar-right { display: flex; justify-content: flex-end; gap: 8px; }
+        
+        /* Data atual ao lado da engrenagem */
+        .current-date { 
+            font-size: 0.85rem; 
+            color: rgba(255,255,255,0.9);
+            font-weight: 600;
+        }
+        
+        /* Filtros de data - CORES AJUSTADAS */
+        .date-filter { 
+            background: rgba(255,255,255,0.2); 
+            border: 1px solid rgba(255,255,255,0.3); 
+            color: white; 
+            padding: 6px 12px; 
+            border-radius: 8px; 
+            font-size: 0.85rem; 
+            cursor: pointer;
+            appearance: none;
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            background-image: url('data:image/svg+xml;utf8,<svg fill="white" height="24" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg"><path d="M7 10l5 5 5-5z"/></svg>');
+            background-repeat: no-repeat;
+            background-position: right 10px center;
+            padding-right: 35px;
+            min-width: 80px;
+        }
+        
+        /* Corrigir cores do dropdown */
+        .date-filter option {
+            background-color: var(--primary);
+            color: white;
+            padding: 8px;
+        }
+        
+        .date-filter:focus {
+            outline: 2px solid rgba(255,255,255,0.5);
+            outline-offset: 2px;
+        }
+
+        /* Conteúdo */
+        .main-content { height: calc(100vh - 70px); overflow-y: auto; padding: 15px; padding-bottom: 100px; }
+        .page { display: none; max-width: 900px; margin: 0 auto; animation: fadeIn 0.4s ease; }
+        .page.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* Estilo dos Gráficos - TAMANHO REDUZIDO */
+        .chart-section { 
+            background: var(--card-bg); 
+            padding: 18px; 
+            border-radius: 18px; 
+            box-shadow: 0 10px 25px var(--shadow); 
+            margin-bottom: 15px; 
+            border: 1px solid var(--border);
+            transition: background 0.3s, border 0.3s;
+        }
+        .chart-header { margin-bottom: 15px; display: flex; justify-content: space-between; align-items: center; }
+        .chart-header h3 { font-size: 0.95rem; color: var(--text); font-weight: 700; }
+        .chart-header-badge { 
+            font-size: 0.65rem; 
+            padding: 3px 8px; 
+            border-radius: 10px; 
+            font-weight: 600; 
+        }
+        .goal-badge { background: var(--goal); color: white; }
+        .charts-grid { display: grid; grid-template-columns: 1fr; gap: 15px; margin-bottom: 15px; }
+        @media (min-width: 768px) { .charts-grid { grid-template-columns: repeat(2, 1fr); } }
+        .chart-container { position: relative; height: 200px; width: 100%; } /* ALTURA REDUZIDA AINDA MAIS */
+
+        /* Formulários e Seções */
+        .section-card { 
+            background: var(--card-bg); 
+            padding: 18px; 
+            border-radius: 18px; 
+            margin-bottom: 15px; 
+            box-shadow: 0 4px 15px var(--shadow);
+            border: 1px solid var(--border);
+            transition: background 0.3s, border 0.3s;
+        }
+        .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 8px; align-items: flex-end; }
+        .form-input { 
+            width: 100%; 
+            padding: 10px; 
+            border: 1.5px solid var(--border); 
+            border-radius: 10px; 
+            font-size: 0.85rem; 
+            background: var(--bg); 
+            margin-bottom: 8px; 
+            color: var(--text);
+            transition: background 0.3s, border 0.3s, color 0.3s;
+        }
+        
+        .btn-submit { 
+            padding: 10px 18px; 
+            border: none; 
+            border-radius: 10px; 
+            color: white; 
+            font-weight: 700; 
+            cursor: pointer; 
+            transition: 0.2s; 
+            font-size: 0.85rem; 
+            background: var(--primary);
+        }
+        .btn-submit:hover { opacity: 0.9; }
+        .btn-submit:active { transform: scale(0.96); }
+
+        /* Navbar Inferior - ÍCONES COLORIDOS */
+        .navbar { 
+            position: fixed; 
+            bottom: 15px; 
+            left: 50%; 
+            transform: translateX(-50%); 
+            background: var(--card-bg); 
+            padding: 6px; 
+            border-radius: 22px; 
+            display: flex; 
+            gap: 4px; 
+            box-shadow: 0 10px 30px var(--shadow); 
+            z-index: 1000; 
+            max-width: 95%;
+            overflow-x: auto;
+            border: 1px solid var(--border);
+            transition: background 0.3s, border 0.3s;
+        }
+        
+        .navbar::-webkit-scrollbar {
+            height: 0;
+        }
+        
+        .nav-link { 
+            padding: 8px 10px; 
+            border-radius: 16px; 
+            cursor: pointer; 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            color: var(--text-light); 
+            transition: 0.3s; 
+            min-width: 60px; 
+            text-decoration: none; 
+            flex-shrink: 0;
+        }
+        
+        .nav-link.active { background: var(--primary); color: white; }
+        .nav-link i { font-size: 1rem; margin-bottom: 2px; }
+        .nav-link span { font-size: 0.55rem; font-weight: 700; text-transform: uppercase; }
+        
+        /* Cores específicas para cada ícone */
+        .nav-link[data-page="home"] i { color: var(--primary); }
+        .nav-link[data-page="expenses"] i { color: var(--expense); }
+        .nav-link[data-page="income"] i { color: var(--income); }
+        .nav-link[data-page="goals"] i { color: var(--goal); }
+        .nav-link[data-page="data"] i { color: var(--data); }
+        
+        .nav-link.active[data-page="home"] i,
+        .nav-link.active[data-page="expenses"] i,
+        .nav-link.active[data-page="income"] i,
+        .nav-link.active[data-page="goals"] i,
+        .nav-link.active[data-page="data"] i { color: white; }
+
+        /* Overlay de Loading e Login */
+        #loading { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--bg); z-index: 4000; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+        #authPage { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--bg); z-index: 3000; display: none; align-items: center; justify-content: center; }
+
+        /* Itens de lista */
+        .item-row { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--border); }
+        .btn-del { color: var(--expense); cursor: pointer; margin-left: 12px; opacity: 0.7; font-size: 0.85rem; }
+        .btn-del:hover { opacity: 1; }
+
+        /* Metas - SEPARAÇÃO ENTRE DESPESAS E GANHOS */
+        .goal-category-section { 
+            background: var(--card-bg); 
+            padding: 16px; 
+            border-radius: 16px; 
+            margin-bottom: 15px; 
+            box-shadow: 0 4px 12px var(--shadow);
+            border: 1px solid var(--border);
+        }
+        
+        .goal-category-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 12px;
+            padding-bottom: 8px;
+            border-bottom: 2px solid;
+        }
+        
+        .goal-category-header.expense { border-bottom-color: var(--expense); }
+        .goal-category-header.income { border-bottom-color: var(--income); }
+        
+        .goal-category-icon {
+            width: 30px;
+            height: 30px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 10px;
+            font-size: 0.9rem;
+        }
+        
+        .goal-category-icon.expense { background-color: rgba(231, 76, 60, 0.15); color: var(--expense); }
+        .goal-category-icon.income { background-color: rgba(46, 204, 113, 0.15); color: var(--income); }
+        
+        .goal-category-header h4 {
+            font-size: 0.95rem;
+            font-weight: 700;
+            margin: 0;
+            color: var(--text);
+        }
+        
+        .goal-row { 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            padding: 8px; 
+            background: rgba(99, 110, 114, 0.1); 
+            border-radius: 10px; 
+            margin-bottom: 6px; 
+            font-size: 0.85rem;
+            color: var(--text);
+        }
+        
+        .goal-progress { 
+            height: 5px; 
+            background: var(--border); 
+            border-radius: 3px; 
+            margin-top: 4px; 
+            overflow: hidden; 
+        }
+        
+        .goal-progress-fill { 
+            height: 100%; 
+            border-radius: 3px; 
+        }
+        
+        .goal-met { background: var(--income); }
+        .goal-exceeded { background: var(--expense); }
+        .goal-remaining { background: var(--goal); }
+        
+        /* Layout em duas colunas para metas */
+        .goals-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+        
+        @media (min-width: 768px) {
+            .goals-grid {
+                grid-template-columns: 1fr 1fr;
+            }
+        }
+        
+        /* Legenda do Gráfico */
+        .chart-legend { display: flex; justify-content: center; gap: 12px; margin-top: 8px; flex-wrap: wrap; }
+        .legend-item { display: flex; align-items: center; font-size: 0.7rem; color: var(--text-light); }
+        .legend-color { width: 10px; height: 10px; border-radius: 2px; margin-right: 4px; }
+        
+        /* Grid responsivo */
+        .scatter-grid { display: grid; grid-template-columns: 1fr; gap: 15px; }
+        @media (min-width: 768px) { .scatter-grid { grid-template-columns: repeat(2, 1fr); } }
+        
+        /* Cards de resumo menores */
+        .summary-grid { 
+            display: grid; 
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); 
+            gap: 12px; 
+            margin-bottom: 20px; 
+        }
+        
+        .stat-card { 
+            background: var(--card-bg); 
+            padding: 12px; 
+            border-radius: 14px; 
+            box-shadow: 0 2px 10px var(--shadow); 
+            border: 1px solid var(--border);
+            transition: background 0.3s, border 0.3s;
+        }
+        
+        .stat-val { 
+            font-size: 1.2rem !important; 
+            font-weight: 800; 
+        }
+        
+        /* Sem metas */
+        .no-goals {
+            color: var(--text-light);
+            font-size: 0.85rem;
+            text-align: center;
+            padding: 15px 0;
+        }
+        
+        /* Itens que ultrapassaram a meta */
+        .exceeded-list {
+            margin-top: 15px;
+            max-height: 120px;
+            overflow-y: auto;
+            border-top: 1px solid var(--border);
+            padding-top: 10px;
+        }
+        
+        .exceeded-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 6px 8px;
+            margin-bottom: 5px;
+            background: rgba(231, 76, 60, 0.15);
+            border-radius: 6px;
+            font-size: 0.75rem;
+            color: var(--expense);
+        }
+        
+        .exceeded-item.income {
+            background: rgba(46, 204, 113, 0.15);
+            color: var(--income);
+        }
+        
+        /* Página de dados */
+        .data-section {
+            margin-bottom: 20px;
+        }
+        
+        .data-buttons {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 10px;
+            margin-top: 15px;
+        }
+        
+        @media (min-width: 768px) {
+            .data-buttons {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+        
+        .data-instructions {
+            background: rgba(99, 110, 114, 0.1);
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 15px;
+            font-size: 0.85rem;
+            color: var(--text-light);
+        }
+        
+        .data-instructions h4 {
+            margin-bottom: 10px;
+            color: var(--text);
+        }
+        
+        .data-instructions ul {
+            padding-left: 20px;
+            margin-top: 10px;
+        }
+        
+        .data-instructions li {
+            margin-bottom: 5px;
+        }
+        
+        /* Controle de tema */
+        .theme-toggle {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-top: 20px;
+            padding: 15px;
+            background: var(--card-bg);
+            border-radius: 12px;
+            border: 1px solid var(--border);
+        }
+        
+        .theme-label {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-weight: 600;
+            color: var(--text);
+        }
+        
+        .theme-icon {
+            font-size: 1.2rem;
+        }
+        
+        .theme-switch {
+            position: relative;
+            display: inline-block;
+            width: 60px;
+            height: 30px;
+        }
+        
+        .theme-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+        
+        .theme-slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #ccc;
+            transition: .4s;
+            border-radius: 34px;
+        }
+        
+        .theme-slider:before {
+            position: absolute;
+            content: "";
+            height: 22px;
+            width: 22px;
+            left: 4px;
+            bottom: 4px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+        
+        input:checked + .theme-slider {
+            background-color: var(--primary);
+        }
+        
+        input:checked + .theme-slider:before {
+            transform: translateX(30px);
+        }
+        
+        .theme-options {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            margin-top: 15px;
+        }
+        
+        .theme-color {
+            width: 100%;
+            height: 40px;
+            border-radius: 8px;
+            cursor: pointer;
+            border: 3px solid transparent;
+            transition: border 0.3s;
+        }
+        
+        .theme-color.active {
+            border-color: var(--text);
+        }
+        
+        /* Cores dos temas */
+        .theme-color[data-theme="default"] { background: linear-gradient(135deg, #4361ee, #3a0ca3); }
+        .theme-color[data-theme="ocean"] { background: linear-gradient(135deg, #06b6d4, #3b82f6); }
+        .theme-color[data-theme="sunset"] { background: linear-gradient(135deg, #f97316, #ec4899); }
+        .theme-color[data-theme="forest"] { background: linear-gradient(135deg, #10b981, #059669); }
+        .theme-color[data-theme="midnight"] { background: linear-gradient(135deg, #6366f1, #8b5cf6); }
+        .theme-color[data-theme="coral"] { background: linear-gradient(135deg, #ef4444, #f59e0b); }
+    </style>
+</head>
+<body>
+
+<div id="loading">
+    <i class="fas fa-spinner fa-spin fa-2x" style="color:var(--primary)"></i>
+    <p style="margin-top:10px">Iniciando sistema...</p>
+</div>
+
+<div id="authPage">
+    <div style="max-width:350px; width:90%; padding:30px; border-radius:20px; background:var(--card-bg); box-shadow:0 10px 25px var(--shadow); text-align:center; border: 1px solid var(--border);">
+        <i class="fas fa-university" style="font-size:3rem; color:var(--primary); margin-bottom:20px;"></i>
+        <h2 style="margin-bottom:20px; color: var(--text);">Controle Financeiro</h2>
+        <input type="email" id="authEmail" class="form-input" placeholder="Seu E-mail">
+        <input type="password" id="authPass" class="form-input" placeholder="Sua Senha">
+        <button onclick="handleAuth('login')" class="btn-submit" style="background:var(--primary); width:100%; margin-bottom:10px;">Entrar</button>
+        <button onclick="handleAuth('signup')" style="background:none; border:none; color:var(--primary); font-size:0.8rem; cursor:pointer;">Não tem conta? Criar uma agora</button>
+    </div>
+</div>
+
+<div class="topbar">
+    <div class="topbar-left">
+        <i class="fas fa-cog btn-icon" onclick="showPage('settings')"></i>
+        <div class="current-date" id="currentDate"></div>
+    </div>
+    <div class="topbar-center"><h1>Meu Financeiro</h1></div>
+    <div class="topbar-right">
+        <select id="filterMonth" class="date-filter"></select>
+        <select id="filterYear" class="date-filter"></select>
+        <i class="fas fa-sign-out-alt btn-icon" style="margin-left:10px" onclick="handleLogout()"></i>
+    </div>
+</div>
+
+<div class="main-content">
+    
+    <div id="home" class="page active">
+        <!-- CARDS DE RESUMO -->
+        <div class="summary-grid">
+            <div class="stat-card">
+                <div style="font-size:0.65rem; color:var(--text-light)">GANHOS</div><div class="stat-val" id="dashInc" style="color: var(--income);">R$ 0,00</div>
+            </div>
+            <div class="stat-card">
+                <div style="font-size:0.65rem; color:var(--text-light)">DESPESAS</div><div class="stat-val" id="dashExp" style="color: var(--expense);">R$ 0,00</div>
+            </div>
+            <div class="stat-card">
+                <div style="font-size:0.65rem; color:var(--text-light)">SALDO</div><div class="stat-val" id="dashBal">R$ 0,00</div>
+            </div>
+        </div>
+
+        <!-- PROGRESSO DAS METAS POR CATEGORIA - SEPARADO EM DUAS COLUNAS -->
+        <div class="goals-grid" id="goalProgressSection" style="display: none;">
+            <!-- DESPESAS - LADO ESQUERDO -->
+            <div class="goal-category-section">
+                <div class="goal-category-header expense">
+                    <div class="goal-category-icon expense">
+                        <i class="fas fa-minus-circle"></i>
+                    </div>
+                    <h4>Metas de Despesas</h4>
+                </div>
+                <div id="goalProgressExpense"></div>
+            </div>
+            
+            <!-- GANHOS - LADO DIREITO -->
+            <div class="goal-category-section">
+                <div class="goal-category-header income">
+                    <div class="goal-category-icon income">
+                        <i class="fas fa-plus-circle"></i>
+                    </div>
+                    <h4>Metas de Ganhos</h4>
+                </div>
+                <div id="goalProgressIncome"></div>
+            </div>
+        </div>
+
+        <!-- NOVA SEÇÃO: TOTAIS DE METAS vs REALIZADO (DESPESAS E GANHOS SEPARADOS) -->
+        <div class="scatter-grid" id="totalComparisonSection" style="display: none;">
+            <!-- DESPESAS TOTAIS vs META TOTAL -->
+            <div class="chart-section">
+                <div class="chart-header">
+                    <h3>Despesas: Total vs Meta</h3>
+                </div>
+                <div class="chart-container">
+                    <canvas id="totalExpenseChart"></canvas>
+                </div>
+                <div id="expenseExceededList" class="exceeded-list"></div>
+            </div>
+            
+            <!-- GANHOS TOTAIS vs META TOTAL -->
+            <div class="chart-section">
+                <div class="chart-header">
+                    <h3>Ganhos: Total vs Meta</h3>
+                </div>
+                <div class="chart-container">
+                    <canvas id="totalIncomeChart"></canvas>
+                </div>
+                <div id="incomeExceededList" class="exceeded-list"></div>
+            </div>
+        </div>
+
+        <!-- GRÁFICO X/Y - PROGRESSO DESPESAS X GANHOS -->
+        <div class="chart-section" id="progressXYSection">
+            <div class="chart-header">
+                <h3>Progresso Despesas vs Ganhos</h3>
+            </div>
+            <div class="chart-container">
+                <canvas id="progressXYChart"></canvas>
+                <div class="chart-legend" id="progressXYLegend"></div>
+            </div>
+        </div>
+        
+        <!-- GRÁFICOS DE DISTRIBUIÇÃO SEPARADOS -->
+        <div class="scatter-grid">
+            <div class="chart-section">
+                <div class="chart-header"><h3>Distribuição de Despesas</h3></div>
+                <div class="chart-container"><canvas id="distributionExpenseChart"></canvas></div>
+            </div>
+            <div class="chart-section">
+                <div class="chart-header"><h3>Distribuição de Ganhos</h3></div>
+                <div class="chart-container"><canvas id="distributionIncomeChart"></canvas></div>
+            </div>
+        </div>
+    </div>
+
+    <div id="expenses" class="page">
+        <div class="section-card">
+            <h3>Nova Despesa</h3>
+            <form id="expForm" class="form-grid">
+                <input type="text" id="eDesc" class="form-input" placeholder="O que comprou?" required>
+                <input type="number" id="eVal" step="0.01" class="form-input" placeholder="Valor" required>
+                <input type="date" id="eDate" class="form-input" required>
+                <select id="eCat" class="form-input"></select>
+                <button type="submit" class="btn-submit" style="background:var(--expense)">Salvar</button>
+            </form>
+        </div>
+        <div class="section-card" id="listExp"></div>
+    </div>
+
+    <div id="income" class="page">
+        <div class="section-card">
+            <h3>Novo Ganho</h3>
+            <form id="incForm" class="form-grid">
+                <input type="text" id="iDesc" class="form-input" placeholder="Origem" required>
+                <input type="number" id="iVal" step="0.01" class="form-input" placeholder="Valor" required>
+                <input type="date" id="iDate" class="form-input" required>
+                <select id="iCat" class="form-input"></select>
+                <button type="submit" class="btn-submit" style="background:var(--income)">Salvar</button>
+            </form>
+        </div>
+        <div class="section-card" id="listInc"></div>
+    </div>
+
+    <div id="goals" class="page">
+        <div class="section-card">
+            <h3>Metas Financeiras</h3>
+            <p style="color: var(--text-light); font-size: 0.8rem; margin-bottom: 12px;">Defina metas para suas categorias e acompanhe seu progresso.</p>
+            
+            <div style="display:grid; grid-template-columns: 1fr; gap:15px; margin-top:12px">
+                <div>
+                    <label style="font-size:0.85rem; color: var(--text);">META PARA DESPESAS</label>
+                    <div style="display:flex; gap:5px; margin-bottom:8px">
+                        <select id="goalCatExp" class="form-input"></select>
+                        <input type="number" id="goalValExp" class="form-input" placeholder="Valor" step="0.01">
+                        <button class="btn-submit" style="background:var(--goal)" onclick="addGoal('expense')">+</button>
+                    </div>
+                    <div id="goalListExp"></div>
+                </div>
+                <div>
+                    <label style="font-size:0.85rem; color: var(--text);">META PARA GANHOS</label>
+                    <div style="display:flex; gap:5px; margin-bottom:8px">
+                        <select id="goalCatInc" class="form-input"></select>
+                        <input type="number" id="goalValInc" class="form-input" placeholder="Valor" step="0.01">
+                        <button class="btn-submit" style="background:var(--goal)" onclick="addGoal('income')">+</button>
+                    </div>
+                    <div id="goalListInc"></div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="section-card">
+            <h3>Metas Ativas</h3>
+            <div id="activeGoalsList"></div>
+        </div>
+    </div>
+
+    <div id="data" class="page">
+        <div class="section-card">
+            <h3>Gerenciamento de Dados</h3>
+            <p style="color: var(--text-light); font-size: 0.85rem; margin-bottom: 20px;">
+                Faça backup dos seus dados ou importe dados de uma planilha Excel.
+            </p>
+            
+            <div class="data-section">
+                <h4 style="margin-bottom: 10px; color: var(--text);">Exportar Dados</h4>
+                <p style="color: var(--text-light); font-size: 0.8rem; margin-bottom: 10px;">
+                    Exporte todas as suas transações para um arquivo Excel.
+                </p>
+                <div class="data-buttons">
+                    <button class="btn-submit" style="background:var(--income)" onclick="exportToExcel()">
+                        <i class="fas fa-file-excel"></i> Exportar para Excel
+                    </button>
+                    <button class="btn-submit" style="background:var(--primary)" onclick="exportToJSON()">
+                        <i class="fas fa-file-code"></i> Exportar para JSON
+                    </button>
+                </div>
+            </div>
+            
+            <div class="data-section">
+                <h4 style="margin-bottom: 10px; color: var(--text);">Importar Dados</h4>
+                <p style="color: var(--text-light); font-size: 0.8rem; margin-bottom: 10px;">
+                    Importe transações de um arquivo Excel ou JSON.
+                </p>
+                <div class="data-buttons">
+                    <div>
+                        <input type="file" id="excelFile" accept=".xlsx, .xls, .csv" class="form-input" style="margin-bottom: 10px;">
+                        <button class="btn-submit" style="background:var(--primary); width: 100%;" onclick="importFromExcel()">
+                            <i class="fas fa-file-import"></i> Importar do Excel
+                        </button>
+                    </div>
+                    <div>
+                        <input type="file" id="jsonFile" accept=".json" class="form-input" style="margin-bottom: 10px;">
+                        <button class="btn-submit" style="background:var(--goal); width: 100%;" onclick="importFromJSON()">
+                            <i class="fas fa-file-import"></i> Importar do JSON
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="data-instructions">
+                <h4>Instruções para Importação</h4>
+                <p>Para importar do Excel, o arquivo deve conter as seguintes colunas:</p>
+                <ul>
+                    <li><strong>Tipo</strong>: "despesa" ou "ganho"</li>
+                    <li><strong>Descrição</strong>: Descrição da transação</li>
+                    <li><strong>Valor</strong>: Valor numérico</li>
+                    <li><strong>Data</strong>: Data no formato YYYY-MM-DD</li>
+                    <li><strong>Categoria</strong>: Nome da categoria</li>
+                </ul>
+                <p style="margin-top: 10px;">Para JSON, use o formato exportado pelo sistema.</p>
+            </div>
+        </div>
+    </div>
+
+    <div id="settings" class="page">
+        <div class="section-card">
+            <h3>Categorias</h3>
+            <div style="display:grid; grid-template-columns: 1fr; gap:15px; margin-top:12px">
+                <div>
+                    <label style="font-size:0.85rem; color: var(--text);">DESPESAS</label>
+                    <div style="display:flex; gap:5px; margin-bottom:8px">
+                        <input type="text" id="newCatExp" class="form-input" placeholder="Nova...">
+                        <button class="btn-submit" style="background:var(--secondary)" onclick="addCat('expense')">+</button>
+                    </div>
+                    <div id="setListExp"></div>
+                </div>
+                <div>
+                    <label style="font-size:0.85rem; color: var(--text);">GANHOS</label>
+                    <div style="display:flex; gap:5px; margin-bottom:8px">
+                        <input type="text" id="newCatInc" class="form-input" placeholder="Nova...">
+                        <button class="btn-submit" style="background:var(--secondary)" onclick="addCat('income')">+</button>
+                    </div>
+                    <div id="setListInc"></div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- CONTROLE DE TEMA -->
+        <div class="section-card">
+            <h3>Personalização</h3>
+            
+            <div class="theme-toggle">
+                <div class="theme-label">
+                    <i class="fas fa-moon theme-icon"></i>
+                    <span>Tema Escuro</span>
+                </div>
+                <label class="theme-switch">
+                    <input type="checkbox" id="themeToggle">
+                    <span class="theme-slider"></span>
+                </label>
+            </div>
+            
+            <div style="margin-top: 20px;">
+                <h4 style="margin-bottom: 10px; color: var(--text);">Cores do Tema</h4>
+                <p style="color: var(--text-light); font-size: 0.85rem; margin-bottom: 10px;">
+                    Escolha uma combinação de cores para o seu tema:
+                </p>
+                <div class="theme-options">
+                    <div class="theme-color active" data-theme="default" onclick="changeThemeColor('default')" title="Padrão"></div>
+                    <div class="theme-color" data-theme="ocean" onclick="changeThemeColor('ocean')" title="Oceano"></div>
+                    <div class="theme-color" data-theme="sunset" onclick="changeThemeColor('sunset')" title="Pôr do Sol"></div>
+                    <div class="theme-color" data-theme="forest" onclick="changeThemeColor('forest')" title="Floresta"></div>
+                    <div class="theme-color" data-theme="midnight" onclick="changeThemeColor('midnight')" title="Meia-noite"></div>
+                    <div class="theme-color" data-theme="coral" onclick="changeThemeColor('coral')" title="Coral"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<nav class="navbar">
+    <div class="nav-link active" data-page="home" onclick="showPage('home')"><i class="fas fa-chart-pie"></i><span>Início</span></div>
+    <div class="nav-link" data-page="expenses" onclick="showPage('expenses')"><i class="fas fa-minus-circle"></i><span>Despesas</span></div>
+    <div class="nav-link" data-page="income" onclick="showPage('income')"><i class="fas fa-plus-circle"></i><span>Ganhos</span></div>
+    <div class="nav-link" data-page="goals" onclick="showPage('goals')"><i class="fas fa-bullseye"></i><span>Metas</span></div>
+    <div class="nav-link" data-page="data" onclick="showPage('data')"><i class="fas fa-database"></i><span>Dados</span></div>
+</nav>
+
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+    import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+    import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+
+    // CONFIGURAÇÃO DO FIREBASE
+    const firebaseConfig = {
+        apiKey: "AIzaSyC3Ozk8msrm2a_r1wXZXPqU5LAygZluHYk",
+        authDomain: "financeiro-2-d5a87.firebaseapp.com",
+        projectId: "financeiro-2-d5a87",
+        storageBucket: "financeiro-2-d5a87.firebasestorage.app",
+        messagingSenderId: "338322706774",
+        appId: "1:338322706774:web:2400e4dcb27d4375ee86f7"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const dbCloud = getFirestore(app);
+    const auth = getAuth(app);
+
+    let db = [];
+    let categories = { expense: ['Alimentação', 'Transporte', 'Lazer'], income: ['Salário', 'Freelance'] };
+    let goals = { expense: {}, income: {} };
+    let currentUser = null;
+    let charts = { 
+        distributionExpense: null,
+        distributionIncome: null,
+        progressXY: null,
+        totalExpense: null,
+        totalIncome: null
+    };
+
+    // Configurações do tema
+    let themeSettings = {
+        darkMode: false,
+        themeColor: 'default'
+    };
+
+    // --- FUNÇÃO PARA ATUALIZAR DATA ATUAL ---
+    function updateCurrentDate() {
+        const now = new Date();
+        const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+        const dateString = now.toLocaleDateString('pt-BR', options);
+        document.getElementById('currentDate').textContent = dateString;
+    }
+
+    // --- FUNÇÕES DE TEMA ---
+    function applyTheme() {
+        const root = document.documentElement;
+        const body = document.body;
+        
+        // Aplicar modo claro/escuro
+        if (themeSettings.darkMode) {
+            body.classList.add('dark-theme');
+        } else {
+            body.classList.remove('dark-theme');
+        }
+        
+        // Aplicar cores do tema
+        applyThemeColors(themeSettings.themeColor);
+        
+        // Atualizar toggle
+        document.getElementById('themeToggle').checked = themeSettings.darkMode;
+        
+        // Atualizar botões ativos
+        document.querySelectorAll('.theme-color').forEach(el => {
+            el.classList.toggle('active', el.dataset.theme === themeSettings.themeColor);
+        });
+        
+        // Atualizar gráficos se existirem
+        if (currentUser) {
+            updateUI();
+        }
+    }
+    
+    function applyThemeColors(themeName) {
+        const root = document.documentElement;
+        
+        // Definir cores baseadas no tema selecionado
+        switch(themeName) {
+            case 'default':
+                if (themeSettings.darkMode) {
+                    root.style.setProperty('--primary', '#6c5ce7');
+                    root.style.setProperty('--secondary', '#a29bfe');
+                    root.style.setProperty('--income', '#00b894');
+                    root.style.setProperty('--expense', '#e17055');
+                    root.style.setProperty('--goal', '#a29bfe');
+                    root.style.setProperty('--data', '#74b9ff');
+                } else {
+                    root.style.setProperty('--primary', '#4361ee');
+                    root.style.setProperty('--secondary', '#3a0ca3');
+                    root.style.setProperty('--income', '#2ecc71');
+                    root.style.setProperty('--expense', '#e74c3c');
+                    root.style.setProperty('--goal', '#9b59b6');
+                    root.style.setProperty('--data', '#3498db');
+                }
+                break;
+                
+            case 'ocean':
+                if (themeSettings.darkMode) {
+                    root.style.setProperty('--primary', '#06b6d4');
+                    root.style.setProperty('--secondary', '#3b82f6');
+                    root.style.setProperty('--income', '#10b981');
+                    root.style.setProperty('--expense', '#ef4444');
+                    root.style.setProperty('--goal', '#8b5cf6');
+                    root.style.setProperty('--data', '#0ea5e9');
+                } else {
+                    root.style.setProperty('--primary', '#06b6d4');
+                    root.style.setProperty('--secondary', '#3b82f6');
+                    root.style.setProperty('--income', '#10b981');
+                    root.style.setProperty('--expense', '#ef4444');
+                    root.style.setProperty('--goal', '#8b5cf6');
+                    root.style.setProperty('--data', '#0ea5e9');
+                }
+                break;
+                
+            case 'sunset':
+                if (themeSettings.darkMode) {
+                    root.style.setProperty('--primary', '#f97316');
+                    root.style.setProperty('--secondary', '#ec4899');
+                    root.style.setProperty('--income', '#84cc16');
+                    root.style.setProperty('--expense', '#dc2626');
+                    root.style.setProperty('--goal', '#d946ef');
+                    root.style.setProperty('--data', '#f59e0b');
+                } else {
+                    root.style.setProperty('--primary', '#f97316');
+                    root.style.setProperty('--secondary', '#ec4899');
+                    root.style.setProperty('--income', '#84cc16');
+                    root.style.setProperty('--expense', '#dc2626');
+                    root.style.setProperty('--goal', '#d946ef');
+                    root.style.setProperty('--data', '#f59e0b');
+                }
+                break;
+                
+            case 'forest':
+                if (themeSettings.darkMode) {
+                    root.style.setProperty('--primary', '#10b981');
+                    root.style.setProperty('--secondary', '#059669');
+                    root.style.setProperty('--income', '#22c55e');
+                    root.style.setProperty('--expense', '#f97316');
+                    root.style.setProperty('--goal', '#0d9488');
+                    root.style.setProperty('--data', '#14b8a6');
+                } else {
+                    root.style.setProperty('--primary', '#10b981');
+                    root.style.setProperty('--secondary', '#059669');
+                    root.style.setProperty('--income', '#22c55e');
+                    root.style.setProperty('--expense', '#f97316');
+                    root.style.setProperty('--goal', '#0d9488');
+                    root.style.setProperty('--data', '#14b8a6');
+                }
+                break;
+                
+            case 'midnight':
+                if (themeSettings.darkMode) {
+                    root.style.setProperty('--primary', '#6366f1');
+                    root.style.setProperty('--secondary', '#8b5cf6');
+                    root.style.setProperty('--income', '#06b6d4');
+                    root.style.setProperty('--expense', '#f43f5e');
+                    root.style.setProperty('--goal', '#a855f7');
+                    root.style.setProperty('--data', '#3b82f6');
+                } else {
+                    root.style.setProperty('--primary', '#6366f1');
+                    root.style.setProperty('--secondary', '#8b5cf6');
+                    root.style.setProperty('--income', '#06b6d4');
+                    root.style.setProperty('--expense', '#f43f5e');
+                    root.style.setProperty('--goal', '#a855f7');
+                    root.style.setProperty('--data', '#3b82f6');
+                }
+                break;
+                
+            case 'coral':
+                if (themeSettings.darkMode) {
+                    root.style.setProperty('--primary', '#ef4444');
+                    root.style.setProperty('--secondary', '#f59e0b');
+                    root.style.setProperty('--income', '#22c55e');
+                    root.style.setProperty('--expense', '#dc2626');
+                    root.style.setProperty('--goal', '#f97316');
+                    root.style.setProperty('--data', '#ec4899');
+                } else {
+                    root.style.setProperty('--primary', '#ef4444');
+                    root.style.setProperty('--secondary', '#f59e0b');
+                    root.style.setProperty('--income', '#22c55e');
+                    root.style.setProperty('--expense', '#dc2626');
+                    root.style.setProperty('--goal', '#f97316');
+                    root.style.setProperty('--data', '#ec4899');
+                }
+                break;
+        }
+    }
+    
+    // Funções globais para controle de tema
+    window.changeThemeColor = function(themeName) {
+        themeSettings.themeColor = themeName;
+        applyTheme();
+        saveThemeSettings();
+    };
+    
+    function saveThemeSettings() {
+        if (!currentUser) return;
+        
+        // Salvar no localStorage para acesso rápido
+        localStorage.setItem('financeiro_theme', JSON.stringify(themeSettings));
+        
+        // Salvar no Firebase também
+        setDoc(doc(dbCloud, "usuarios", currentUser.uid), {
+            transacoes: db,
+            categorias: categories,
+            metas: goals,
+            tema: themeSettings
+        }, { merge: true });
+    }
+    
+    function loadThemeSettings() {
+        // Carregar do localStorage primeiro
+        const saved = localStorage.getItem('financeiro_theme');
+        if (saved) {
+            themeSettings = JSON.parse(saved);
+        }
+        applyTheme();
+    }
+
+    // --- SISTEMA DE LOGIN ---
+    window.handleAuth = async (type) => {
+        const email = document.getElementById('authEmail').value;
+        const pass = document.getElementById('authPass').value;
+        if(!email || !pass) return alert("Preencha todos os campos");
+        
+        try {
+            if(type === 'login') await signInWithEmailAndPassword(auth, email, pass);
+            else await createUserWithEmailAndPassword(auth, email, pass);
+        } catch (e) { alert("Erro: " + e.message); }
+    };
+
+    window.handleLogout = () => signOut(auth);
+
+    onAuthStateChanged(auth, async (user) => {
+        const loading = document.getElementById('loading');
+        const authPage = document.getElementById('authPage');
+        
+        if (user) {
+            currentUser = user;
+            authPage.style.display = 'none';
+            loading.style.display = 'flex';
+            await loadFromCloud();
+            loading.style.display = 'none';
+            updateCurrentDate(); // Atualizar data
+            loadThemeSettings(); // Carregar configurações do tema
+            updateUI();
+        } else {
+            currentUser = null;
+            authPage.style.display = 'flex';
+            loading.style.display = 'none';
+        }
+    });
+
+    // --- FUNÇÕES DE DADOS ---
+    async function saveToCloud() {
+        if(!currentUser) return;
+        await setDoc(doc(dbCloud, "usuarios", currentUser.uid), {
+            transacoes: db,
+            categorias: categories,
+            metas: goals,
+            tema: themeSettings
+        });
+    }
+
+    async function loadFromCloud() {
+        const docSnap = await getDoc(doc(dbCloud, "usuarios", currentUser.uid));
+        if (docSnap.exists()) {
+            const data = docSnap.data();
+            db = data.transacoes || [];
+            categories = data.categorias || categories;
+            goals = data.metas || { expense: {}, income: {} };
+            
+            // Carregar configurações do tema do Firebase
+            if (data.tema) {
+                themeSettings = data.tema;
+            }
+        }
+    }
+
+    // --- LÓGICA DA INTERFACE ---
+    window.showPage = (id) => {
+        document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+        document.getElementById(id).classList.add('active');
+        document.querySelectorAll('.nav-link').forEach(n => n.classList.toggle('active', n.dataset.page === id));
+        if(id === 'home') updateUI();
+        if(id === 'goals') updateGoalsUI();
+    };
+
+    window.addCat = async (type) => {
+        const inp = document.getElementById(type === 'expense' ? 'newCatExp' : 'newCatInc');
+        if(inp.value.trim()) { 
+            categories[type].push(inp.value.trim()); 
+            inp.value = ''; 
+            updateCategoryUI(); 
+            await saveToCloud(); 
+        }
+    };
+
+    window.deleteItem = async (id) => { 
+        db = db.filter(t => t.id !== id); 
+        await saveToCloud(); 
+        updateUI(); 
+    };
+
+    // --- SISTEMA DE METAS ---
+    window.addGoal = async (type) => {
+        const catSelect = document.getElementById(type === 'expense' ? 'goalCatExp' : 'goalCatInc');
+        const valInput = document.getElementById(type === 'expense' ? 'goalValExp' : 'goalValInc');
+        
+        const categoria = catSelect.value;
+        const valor = parseFloat(valInput.value);
+        
+        if(!categoria || !valor || valor <= 0) {
+            alert("Selecione uma categoria e insira um valor válido!");
+            return;
+        }
+        
+        goals[type][categoria] = valor;
+        valInput.value = '';
+        await saveToCloud();
+        updateGoalsUI();
+        updateUI();
+    };
+
+    window.removeGoal = async (type, categoria) => {
+        if(confirm(`Remover meta para ${categoria}?`)) {
+            delete goals[type][categoria];
+            await saveToCloud();
+            updateGoalsUI();
+            updateUI();
+        }
+    };
+
+    function updateGoalsUI() {
+        // Atualizar selects de categoria para metas
+        document.getElementById('goalCatExp').innerHTML = '<option value="">Selecione...</option>' + 
+            categories.expense.map(c => `<option value="${c}">${c}</option>`).join('');
+        document.getElementById('goalCatInc').innerHTML = '<option value="">Selecione...</option>' + 
+            categories.income.map(c => `<option value="${c}">${c}</option>`).join('');
+        
+        // Listar metas de despesas
+        const goalListExp = document.getElementById('goalListExp');
+        goalListExp.innerHTML = Object.keys(goals.expense).length > 0 ? 
+            Object.entries(goals.expense).map(([cat, val]) => `
+                <div class="goal-row">
+                    <div>
+                        <strong style="font-size:0.85rem;">${cat}</strong><br>
+                        <small style="color:var(--text-light); font-size:0.75rem;">Meta: R$ ${val.toFixed(2)}</small>
+                    </div>
+                    <i class="fas fa-times btn-del" onclick="removeGoal('expense', '${cat}')"></i>
+                </div>
+            `).join('') : '<p style="color:var(--text-light); font-size:0.8rem;">Nenhuma meta definida</p>';
+        
+        // Listar metas de ganhos
+        const goalListInc = document.getElementById('goalListInc');
+        goalListInc.innerHTML = Object.keys(goals.income).length > 0 ? 
+            Object.entries(goals.income).map(([cat, val]) => `
+                <div class="goal-row">
+                    <div>
+                        <strong style="font-size:0.85rem;">${cat}</strong><br>
+                        <small style="color:var(--text-light); font-size:0.75rem;">Meta: R$ ${val.toFixed(2)}</small>
+                    </div>
+                    <i class="fas fa-times btn-del" onclick="removeGoal('income', '${cat}')"></i>
+                </div>
+            `).join('') : '<p style="color:var(--text-light); font-size:0.8rem;">Nenhuma meta definida</p>';
+        
+        // Listar todas as metas ativas
+        const activeGoalsList = document.getElementById('activeGoalsList');
+        const allGoals = [...Object.entries(goals.expense).map(([k,v]) => ({type:'expense', cat:k, val:v})),
+                          ...Object.entries(goals.income).map(([k,v]) => ({type:'income', cat:k, val:v}))];
+        
+        activeGoalsList.innerHTML = allGoals.length > 0 ? 
+            allGoals.map(g => `
+                <div class="goal-row">
+                    <div>
+                        <strong style="font-size:0.85rem;">${g.cat}</strong>
+                        <span style="font-size:0.65rem; color:${g.type==='income'?'var(--income)':'var(--expense)'}">
+                            (${g.type==='income'?'Ganho':'Despesa'})
+                        </span><br>
+                        <small style="color:var(--text-light); font-size:0.75rem;">Meta: R$ ${g.val.toFixed(2)}</small>
+                    </div>
+                    <i class="fas fa-times btn-del" onclick="removeGoal('${g.type}', '${g.cat}')"></i>
+                </div>
+            `).join('') : '<p style="color:var(--text-light); font-size:0.8rem;">Nenhuma meta ativa</p>';
+    }
+
+    function updateCategoryUI() {
+        document.getElementById('eCat').innerHTML = categories.expense.map(c => `<option>${c}</option>`).join('');
+        document.getElementById('iCat').innerHTML = categories.income.map(c => `<option>${c}</option>`).join('');
+        
+        const renderList = (type, target) => {
+            document.getElementById(target).innerHTML = categories[type].map((c, i) => `
+                <div style="display:flex; justify-content:space-between; background:rgba(99, 110, 114, 0.1); padding:6px; border-radius:8px; margin-bottom:4px; font-size:0.75rem; color: var(--text);">
+                    ${c} <i class="fas fa-times" style="color:var(--expense); cursor:pointer; font-size:0.75rem;" onclick="removeCat('${type}', ${i})"></i>
+                </div>`).join('');
+        };
+        renderList('expense', 'setListExp'); 
+        renderList('income', 'setListInc');
+        
+        updateGoalsUI();
+    }
+
+    window.removeCat = async (type, idx) => { 
+        const categoria = categories[type][idx];
+        categories[type].splice(idx, 1); 
+        
+        if(goals[type][categoria]) {
+            delete goals[type][categoria];
+        }
+        
+        updateCategoryUI(); 
+        await saveToCloud(); 
+    };
+
+    document.getElementById('expForm').onsubmit = async (e) => { e.preventDefault(); await save('expense'); };
+    document.getElementById('incForm').onsubmit = async (e) => { e.preventDefault(); await save('income'); };
+
+    async function save(type) {
+        const pre = type === 'expense' ? 'e' : 'i';
+        const desc = document.getElementById(pre+'Desc').value;
+        const val = parseFloat(document.getElementById(pre+'Val').value);
+        const date = document.getElementById(pre+'Date').value;
+        const cat = document.getElementById(pre+'Cat').value;
+        
+        if(!desc || !val || !date || !cat) {
+            alert("Preencha todos os campos!");
+            return;
+        }
+        
+        db.push({ 
+            id: Date.now(), 
+            type, 
+            desc, 
+            val, 
+            date, 
+            cat 
+        });
+        
+        document.getElementById(pre+'Desc').value = ''; 
+        document.getElementById(pre+'Val').value = '';
+        await saveToCloud(); 
+        updateUI();
+    }
+
+    function initFilters() {
+        const m = document.getElementById('filterMonth'), y = document.getElementById('filterYear'), now = new Date();
+        const months = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
+        m.innerHTML = months.map((n, i) => `<option value="${i}" ${i==now.getMonth()?'selected':''}>${n}</option>`).join('');
+        for(let i=now.getFullYear()-1; i<=now.getFullYear()+1; i++) y.innerHTML += `<option value="${i}" ${i==now.getFullYear()?'selected':''}>${i}</option>`;
+        m.onchange = y.onchange = updateUI;
+    }
+
+    function updateUI() {
+        updateCategoryUI();
+        
+        const m = parseInt(document.getElementById('filterMonth').value);
+        const y = parseInt(document.getElementById('filterYear').value);
+        const filtered = db.filter(t => {
+            const d = new Date(t.date + 'T00:00:00');
+            return d.getMonth() === m && d.getFullYear() === y;
+        });
+
+        let ti = 0, te = 0;
+        const expenseTotals = {}, incomeTotals = {};
+        const lExp = document.getElementById('listExp'), lInc = document.getElementById('listInc');
+        lExp.innerHTML = '<h4 style="font-size:0.95rem; color: var(--text);">Despesas</h4>'; 
+        lInc.innerHTML = '<h4 style="font-size:0.95rem; color: var(--text);">Ganhos</h4>';
+
+        // Calcular totais
+        filtered.forEach(t => {
+            const isI = t.type === 'income';
+            if(isI) { 
+                ti += t.val; 
+                incomeTotals[t.cat] = (incomeTotals[t.cat] || 0) + t.val; 
+            } else { 
+                te += t.val; 
+                expenseTotals[t.cat] = (expenseTotals[t.cat] || 0) + t.val; 
+            }
+        });
+
+        // Listar transações
+        filtered.sort((a,b) => new Date(b.date) - new Date(a.date)).forEach(t => {
+            const isI = t.type === 'income';
+            const hasGoal = goals[t.type] && goals[t.type][t.cat];
+            
+            const html = `<div class="item-row">
+                <div style="font-size:0.8rem; color: var(--text);">
+                    <strong>${t.desc}</strong><br>
+                    <span style="color:var(--text-light)">${t.cat}</span>
+                    ${hasGoal ? `<span style="color:var(--goal); font-size:0.65rem; margin-left:5px;">(Meta: R$ ${goals[t.type][t.cat].toFixed(2)})</span>` : ''}
+                </div>
+                <div style="display:flex; align-items:center">
+                    <span style="font-weight:700; color:${isI?'var(--income)':'var(--expense)'}; font-size:0.85rem;">R$ ${t.val.toFixed(2)}</span>
+                    <i class="fas fa-trash-alt btn-del" onclick="deleteItem(${t.id})"></i>
+                </div></div>`;
+            
+            if(isI) lInc.innerHTML += html; 
+            else lExp.innerHTML += html;
+        });
+
+        document.getElementById('dashInc').innerText = `R$ ${ti.toFixed(2)}`;
+        document.getElementById('dashExp').innerText = `R$ ${te.toFixed(2)}`;
+        document.getElementById('dashBal').innerText = `R$ ${(ti - te).toFixed(2)}`;
+        
+        // Atualizar progresso das metas por categoria (separado)
+        updateGoalProgress(expenseTotals, incomeTotals);
+        
+        // Mostrar/ocultar seções de metas
+        const goalProgressSection = document.getElementById('goalProgressSection');
+        const totalComparisonSection = document.getElementById('totalComparisonSection');
+        
+        if(Object.keys(goals.expense).length > 0 || Object.keys(goals.income).length > 0) {
+            goalProgressSection.style.display = 'grid';
+            totalComparisonSection.style.display = 'grid';
+            renderTotalCharts(expenseTotals, incomeTotals, te, ti);
+        } else {
+            goalProgressSection.style.display = 'none';
+            totalComparisonSection.style.display = 'none';
+        }
+        
+        // Sempre mostrar gráfico X/Y
+        renderProgressXYChart(te, ti);
+        
+        renderDistributionCharts(expenseTotals, incomeTotals);
+    }
+
+    // NOVA FUNÇÃO: Gráficos de totais vs metas
+    function renderTotalCharts(expenseTotals, incomeTotals, totalExpense, totalIncome) {
+        // Calcular soma total das metas
+        let totalGoalExpense = 0;
+        Object.values(goals.expense).forEach(val => totalGoalExpense += val);
+        
+        let totalGoalIncome = 0;
+        Object.values(goals.income).forEach(val => totalGoalIncome += val);
+        
+        // Gráfico de despesas totais vs meta total
+        if(charts.totalExpense) charts.totalExpense.destroy();
+        
+        const ctxExp = document.getElementById('totalExpenseChart').getContext('2d');
+        charts.totalExpense = new Chart(ctxExp, {
+            type: 'bar',
+            data: {
+                labels: ['Despesas', 'Meta'],
+                datasets: [{
+                    data: [totalExpense, totalGoalExpense],
+                    backgroundColor: ['var(--expense)', 'rgba(231, 76, 60, 0.3)'],
+                    borderColor: ['var(--expense)', 'var(--expense)'],
+                    borderWidth: 2,
+                    borderRadius: 5
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                let label = '';
+                                if (context.dataIndex === 0) {
+                                    label = `Despesas: R$ ${context.raw.toFixed(2)}`;
+                                } else {
+                                    label = `Meta: R$ ${context.raw.toFixed(2)}`;
+                                }
+                                return label;
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        grid: {
+                            color: 'rgba(0,0,0,0.05)'
+                        },
+                        ticks: {
+                            font: {
+                                size: 10
+                            },
+                            callback: function(value) {
+                                return 'R$ ' + value.toLocaleString('pt-BR', {minimumFractionDigits: 0});
+                            }
+                        }
+                    },
+                    x: {
+                        grid: {
+                            display: false
+                        }
+                    }
+                }
+            }
+        });
+        
+        // Gráfico de ganhos totais vs meta total
+        if(charts.totalIncome) charts.totalIncome.destroy();
+        
+        const ctxInc = document.getElementById('totalIncomeChart').getContext('2d');
+        charts.totalIncome = new Chart(ctxInc, {
+            type: 'bar',
+            data: {
+                labels: ['Ganhos', 'Meta'],
+                datasets: [{
+                    data: [totalIncome, totalGoalIncome],
+                    backgroundColor: ['var(--income)', 'rgba(46, 204, 113, 0.3)'],
+                    borderColor: ['var(--income)', 'var(--income)'],
+                    borderWidth: 2,
+                    borderRadius: 5
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                let label = '';
+                                if (context.dataIndex === 0) {
+                                    label = `Ganhos: R$ ${context.raw.toFixed(2)}`;
+                                } else {
+                                    label = `Meta: R$ ${context.raw.toFixed(2)}`;
+                                }
+                                return label;
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        grid: {
+                            color: 'rgba(0,0,0,0.05)'
+                        },
+                        ticks: {
+                            font: {
+                                size: 10
+                            },
+                            callback: function(value) {
+                                return 'R$ ' + value.toLocaleString('pt-BR', {minimumFractionDigits: 0});
+                            }
+                        }
+                    },
+                    x: {
+                        grid: {
+                            display: false
+                        }
+                    }
+                }
+            }
+        });
+        
+        // Listar categorias que ultrapassaram a meta (despesas)
+        const expenseExceededList = document.getElementById('expenseExceededList');
+        const expenseExceeded = [];
+        
+        Object.entries(goals.expense).forEach(([cat, meta]) => {
+            const realizado = expenseTotals[cat] || 0;
+            if (realizado > meta) {
+                expenseExceeded.push({
+                    cat,
+                    realizado,
+                    meta,
+                    diff: realizado - meta
+                });
+            }
+        });
+        
+        if (expenseExceeded.length > 0) {
+            expenseExceededList.innerHTML = '<strong style="font-size:0.8rem; color: var(--text);">Categorias acima da meta:</strong>';
+            expenseExceeded.forEach(item => {
+                const div = document.createElement('div');
+                div.className = 'exceeded-item';
+                div.innerHTML = `
+                    <span>${item.cat}</span>
+                    <span>+R$ ${item.diff.toFixed(2)}</span>
+                `;
+                expenseExceededList.appendChild(div);
+            });
+        } else {
+            expenseExceededList.innerHTML = '<div style="color:var(--text-light); font-size:0.75rem; text-align:center; padding:10px;">Nenhuma categoria de despesas acima da meta</div>';
+        }
+        
+        // Listar categorias que ultrapassaram a meta (ganhos)
+        const incomeExceededList = document.getElementById('incomeExceededList');
+        const incomeExceeded = [];
+        
+        Object.entries(goals.income).forEach(([cat, meta]) => {
+            const realizado = incomeTotals[cat] || 0;
+            if (realizado > meta) {
+                incomeExceeded.push({
+                    cat,
+                    realizado,
+                    meta,
+                    diff: realizado - meta
+                });
+            }
+        });
+        
+        if (incomeExceeded.length > 0) {
+            incomeExceededList.innerHTML = '<strong style="font-size:0.8rem; color: var(--text);">Categorias acima da meta:</strong>';
+            incomeExceeded.forEach(item => {
+                const div = document.createElement('div');
+                div.className = 'exceeded-item income';
+                div.innerHTML = `
+                    <span>${item.cat}</span>
+                    <span>+R$ ${item.diff.toFixed(2)}</span>
+                `;
+                incomeExceededList.appendChild(div);
+            });
+        } else {
+            incomeExceededList.innerHTML = '<div style="color:var(--text-light); font-size:0.75rem; text-align:center; padding:10px;">Nenhuma categoria de ganhos acima da meta</div>';
+        }
+    }
+
+    function updateGoalProgress(expenseTotals, incomeTotals) {
+        const goalProgressExpense = document.getElementById('goalProgressExpense');
+        const goalProgressIncome = document.getElementById('goalProgressIncome');
+        
+        // Progresso das metas de despesas
+        const expenseProgress = Object.entries(goals.expense).map(([cat, meta]) => {
+            const gasto = expenseTotals[cat] || 0;
+            const porcentagem = Math.min(100, (gasto / meta) * 100);
+            const status = gasto > meta ? 'excedido' : gasto === meta ? 'met' : 'remaining';
+            
+            return { cat, tipo: 'Despesa', gasto, meta, porcentagem, status };
+        });
+        
+        // Progresso das metas de ganhos
+        const incomeProgress = Object.entries(goals.income).map(([cat, meta]) => {
+            const ganho = incomeTotals[cat] || 0;
+            const porcentagem = Math.min(100, (ganho / meta) * 100);
+            const status = ganho >= meta ? 'met' : 'remaining';
+            
+            return { cat, tipo: 'Ganho', gasto: ganho, meta, porcentagem, status };
+        });
+        
+        // Renderizar metas de despesas
+        goalProgressExpense.innerHTML = expenseProgress.length > 0 ? expenseProgress.map(p => `
+            <div class="goal-row">
+                <div style="width:100%">
+                    <div style="display:flex; justify-content:space-between; margin-bottom:4px">
+                        <div>
+                            <strong style="font-size:0.85rem;">${p.cat}</strong>
+                        </div>
+                        <div>
+                            <span style="color:var(--expense); font-size:0.8rem;">R$ ${p.gasto.toFixed(2)}</span>
+                            <span style="color:var(--text-light); font-size:0.8rem;"> / R$ ${p.meta.toFixed(2)}</span>
+                        </div>
+                    </div>
+                    <div class="goal-progress">
+                        <div class="goal-progress-fill goal-${p.status}" style="width:${p.porcentagem}%"></div>
+                    </div>
+                    <div style="display:flex; justify-content:space-between; margin-top:4px">
+                        <small style="color:var(--text-light); font-size:0.7rem;">${p.porcentagem.toFixed(1)}%</small>
+                        <small style="color:var(--text-light); font-size:0.7rem;">
+                            ${p.status === 'excedido' ? 'Meta excedida!' : 
+                              p.status === 'met' ? 'Meta atingida!' : 
+                              `Faltam: R$ ${(p.meta - p.gasto).toFixed(2)}`}
+                        </small>
+                    </div>
+                </div>
+            </div>
+        `).join('') : '<div class="no-goals">Nenhuma meta de despesas definida</div>';
+        
+        // Renderizar metas de ganhos
+        goalProgressIncome.innerHTML = incomeProgress.length > 0 ? incomeProgress.map(p => `
+            <div class="goal-row">
+                <div style="width:100%">
+                    <div style="display:flex; justify-content:space-between; margin-bottom:4px">
+                        <div>
+                            <strong style="font-size:0.85rem;">${p.cat}</strong>
+                        </div>
+                        <div>
+                            <span style="color:var(--income); font-size:0.8rem;">R$ ${p.gasto.toFixed(2)}</span>
+                            <span style="color:var(--text-light); font-size:0.8rem;"> / R$ ${p.meta.toFixed(2)}</span>
+                        </div>
+                    </div>
+                    <div class="goal-progress">
+                        <div class="goal-progress-fill goal-${p.status}" style="width:${p.porcentagem}%"></div>
+                    </div>
+                    <div style="display:flex; justify-content:space-between; margin-top:4px">
+                        <small style="color:var(--text-light); font-size:0.7rem;">${p.porcentagem.toFixed(1)}%</small>
+                        <small style="color:var(--text-light); font-size:0.7rem;">
+                            ${p.status === 'excedido' ? 'Meta excedida!' : 
+                              p.status === 'met' ? 'Meta atingida!' : 
+                              `Faltam: R$ ${(p.meta - p.gasto).toFixed(2)}`}
+                        </small>
+                    </div>
+                </div>
+            </div>
+        `).join('') : '<div class="no-goals">Nenhuma meta de ganhos definida</div>';
+    }
+
+    function renderDistributionCharts(expenseTotals, incomeTotals) {
+        // GRÁFICOS DE DISTRIBUIÇÃO SEPARADOS
+        if(charts.distributionExpense) charts.distributionExpense.destroy();
+        if(charts.distributionIncome) charts.distributionIncome.destroy();
+        
+        // Gráfico de distribuição de despesas
+        charts.distributionExpense = new Chart(document.getElementById('distributionExpenseChart'), {
+            type: 'doughnut',
+            data: { 
+                labels: Object.keys(expenseTotals).length > 0 ? Object.keys(expenseTotals) : ['Sem despesas'], 
+                datasets: [{ 
+                    data: Object.keys(expenseTotals).length > 0 ? Object.values(expenseTotals) : [1], 
+                    backgroundColor: ['#e74c3c', '#e67e22', '#f39c12', '#f1c40f', '#c0392b', '#a93226'] 
+                }] 
+            },
+            options: { 
+                responsive: true, 
+                maintainAspectRatio: false, 
+                cutout: '65%',
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: {
+                            font: {
+                                size: 10
+                            },
+                            padding: 15,
+                            color: 'var(--text)'
+                        }
+                    }
+                }
+            }
+        });
+        
+        // Gráfico de distribuição de ganhos
+        charts.distributionIncome = new Chart(document.getElementById('distributionIncomeChart'), {
+            type: 'doughnut',
+            data: { 
+                labels: Object.keys(incomeTotals).length > 0 ? Object.keys(incomeTotals) : ['Sem ganhos'], 
+                datasets: [{ 
+                    data: Object.keys(incomeTotals).length > 0 ? Object.values(incomeTotals) : [1], 
+                    backgroundColor: ['#2ecc71', '#27ae60', '#1abc9c', '#16a085', '#0b5345', '#0a3a2e'] 
+                }] 
+            },
+            options: { 
+                responsive: true, 
+                maintainAspectRatio: false, 
+                cutout: '65%',
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: {
+                            font: {
+                                size: 10
+                            },
+                            padding: 15,
+                            color: 'var(--text)'
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    function renderProgressXYChart(te, ti) {
+        if(charts.progressXY) charts.progressXY.destroy();
+        
+        const ctx = document.getElementById('progressXYChart').getContext('2d');
+        
+        // Preparar dados para gráfico de linha
+        const meses = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
+        const mesAtual = parseInt(document.getElementById('filterMonth').value);
+        const anoAtual = parseInt(document.getElementById('filterYear').value);
+        
+        // Coletar dados dos últimos 6 meses
+        const dadosMensais = [];
+        for(let i = 5; i >= 0; i--) {
+            let mes = mesAtual - i;
+            let ano = anoAtual;
+            
+            if(mes < 0) {
+                mes += 12;
+                ano -= 1;
+            }
+            
+            const filtered = db.filter(t => {
+                const d = new Date(t.date + 'T00:00:00');
+                return d.getMonth() === mes && d.getFullYear() === ano;
+            });
+            
+            let despesas = 0;
+            let ganhos = 0;
+            
+            filtered.forEach(t => {
+                if(t.type === 'income') ganhos += t.val;
+                else despesas += t.val;
+            });
+            
+            dadosMensais.push({
+                mes: meses[mes],
+                despesas: despesas,
+                ganhos: ganhos
+            });
+        }
+        
+        charts.progressXY = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: dadosMensais.map(d => d.mes),
+                datasets: [
+                    {
+                        label: 'Despesas',
+                        data: dadosMensais.map(d => d.despesas),
+                        borderColor: 'var(--expense)',
+                        backgroundColor: 'rgba(231, 76, 60, 0.1)',
+                        borderWidth: 2,
+                        fill: true,
+                        tension: 0.3,
+                        pointRadius: 3,
+                        pointHoverRadius: 5
+                    },
+                    {
+                        label: 'Ganhos',
+                        data: dadosMensais.map(d => d.ganhos),
+                        borderColor: 'var(--income)',
+                        backgroundColor: 'rgba(46, 204, 113, 0.1)',
+                        borderWidth: 2,
+                        fill: true,
+                        tension: 0.3,
+                        pointRadius: 3,
+                        pointHoverRadius: 5
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: true,
+                        position: 'top',
+                        labels: {
+                            font: {
+                                size: 11
+                            },
+                            color: 'var(--text)'
+                        }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return `${context.dataset.label}: R$ ${context.parsed.y.toLocaleString('pt-BR', {minimumFractionDigits: 2})}`;
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        grid: {
+                            color: 'rgba(0,0,0,0.05)'
+                        },
+                        ticks: {
+                            font: {
+                                size: 10
+                            },
+                            callback: function(value) {
+                                return 'R$ ' + value.toLocaleString('pt-BR', {minimumFractionDigits: 0});
+                            },
+                            color: 'var(--text)'
+                        }
+                    },
+                    x: {
+                        grid: {
+                            color: 'rgba(0,0,0,0.05)'
+                        },
+                        ticks: {
+                            font: {
+                                size: 10
+                            },
+                            color: 'var(--text)'
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    // --- SISTEMA DE BACKUP/EXPORTAÇÃO ---
+    window.exportToExcel = function() {
+        if (db.length === 0) {
+            alert("Não há dados para exportar!");
+            return;
+        }
+        
+        // Preparar dados para Excel
+        const dados = db.map(item => ({
+            'Tipo': item.type === 'income' ? 'Ganho' : 'Despesa',
+            'Descrição': item.desc,
+            'Valor': item.val.toFixed(2),
+            'Data': item.date,
+            'Categoria': item.cat,
+            'ID': item.id
+        }));
+        
+        // Criar planilha
+        const ws = XLSX.utils.json_to_sheet(dados);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "Transações");
+        
+        // Adicionar metadados
+        const metaWs = XLSX.utils.json_to_sheet([
+            {'Informação': 'Valor'},
+            {'Total de Transações': db.length},
+            {'Data de Exportação': new Date().toLocaleDateString('pt-BR')},
+            {'Categorias de Despesas': categories.expense.join(', ')},
+            {'Categorias de Ganhos': categories.income.join(', ')}
+        ]);
+        XLSX.utils.book_append_sheet(wb, metaWs, "Metadados");
+        
+        // Exportar arquivo
+        const fileName = `backup_financeiro_${new Date().toISOString().slice(0,10)}.xlsx`;
+        XLSX.writeFile(wb, fileName);
+        
+        alert(`Dados exportados com sucesso! Arquivo: ${fileName}`);
+    };
+    
+    window.exportToJSON = function() {
+        if (db.length === 0) {
+            alert("Não há dados para exportar!");
+            return;
+        }
+        
+        const dadosCompletos = {
+            transacoes: db,
+            categorias: categories,
+            metas: goals,
+            tema: themeSettings,
+            dataExportacao: new Date().toISOString()
+        };
+        
+        const jsonStr = JSON.stringify(dadosCompletos, null, 2);
+        const blob = new Blob([jsonStr], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `backup_financeiro_${new Date().toISOString().slice(0,10)}.json`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        
+        alert("Dados exportados para JSON com sucesso!");
+    };
+    
+    window.importFromExcel = async function() {
+        const fileInput = document.getElementById('excelFile');
+        if (!fileInput.files.length) {
+            alert("Selecione um arquivo Excel para importar!");
+            return;
+        }
+        
+        const file = fileInput.files[0];
+        const reader = new FileReader();
+        
+        reader.onload = function(e) {
+            try {
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, { type: 'array' });
+                const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+                const jsonData = XLSX.utils.sheet_to_json(firstSheet);
+                
+                if (jsonData.length === 0) {
+                    alert("O arquivo Excel está vazio!");
+                    return;
+                }
+                
+                // Converter dados para o formato do sistema
+                const importedData = jsonData.map(row => {
+                    // Detectar tipo pela coluna
+                    let tipo = 'expense';
+                    if (row.Tipo && (row.Tipo.toLowerCase().includes('ganho') || row.Tipo.toLowerCase().includes('income'))) {
+                        tipo = 'income';
+                    }
+                    
+                    return {
+                        id: row.ID || Date.now() + Math.random(),
+                        type: tipo,
+                        desc: row.Descrição || row.Descricao || row.Desc || '',
+                        val: parseFloat(row.Valor) || 0,
+                        date: row.Data || new Date().toISOString().slice(0,10),
+                        cat: row.Categoria || 'Outros'
+                    };
+                }).filter(item => item.desc && !isNaN(item.val) && item.val > 0);
+                
+                if (importedData.length === 0) {
+                    alert("Nenhum dado válido encontrado no arquivo!");
+                    return;
+                }
+                
+                if (confirm(`Deseja importar ${importedData.length} transações?`)) {
+                    // Adicionar dados importados
+                    db.push(...importedData);
+                    saveToCloud().then(() => {
+                        alert(`${importedData.length} transações importadas com sucesso!`);
+                        updateUI();
+                        fileInput.value = '';
+                    });
+                }
+            } catch (error) {
+                console.error("Erro ao importar Excel:", error);
+                alert("Erro ao importar arquivo Excel. Verifique o formato!");
+            }
+        };
+        
+        reader.readAsArrayBuffer(file);
+    };
+    
+    window.importFromJSON = async function() {
+        const fileInput = document.getElementById('jsonFile');
+        if (!fileInput.files.length) {
+            alert("Selecione um arquivo JSON para importar!");
+            return;
+        }
+        
+        const file = fileInput.files[0];
+        const reader = new FileReader();
+        
+        reader.onload = function(e) {
+            try {
+                const jsonData = JSON.parse(e.target.result);
+                
+                if (!jsonData.transacoes || !Array.isArray(jsonData.transacoes)) {
+                    alert("Formato de arquivo JSON inválido!");
+                    return;
+                }
+                
+                const importedData = jsonData.transacoes.map(item => ({
+                    id: item.id || Date.now() + Math.random(),
+                    type: item.type,
+                    desc: item.desc,
+                    val: parseFloat(item.val) || 0,
+                    date: item.date,
+                    cat: item.cat
+                })).filter(item => item.desc && !isNaN(item.val) && item.val > 0);
+                
+                if (importedData.length === 0) {
+                    alert("Nenhum dado válido encontrado no arquivo!");
+                    return;
+                }
+                
+                if (confirm(`Deseja importar ${importedData.length} transações?`)) {
+                    // Adicionar dados importados
+                    db.push(...importedData);
+                    
+                    // Atualizar categorias se existirem no arquivo
+                    if (jsonData.categorias) {
+                        if (jsonData.categorias.expense) {
+                            categories.expense = [...new Set([...categories.expense, ...jsonData.categorias.expense])];
+                        }
+                        if (jsonData.categorias.income) {
+                            categories.income = [...new Set([...categories.income, ...jsonData.categorias.income])];
+                        }
+                    }
+                    
+                    // Atualizar metas se existirem no arquivo
+                    if (jsonData.metas) {
+                        if (jsonData.metas.expense) {
+                            Object.assign(goals.expense, jsonData.metas.expense);
+                        }
+                        if (jsonData.metas.income) {
+                            Object.assign(goals.income, jsonData.metas.income);
+                        }
+                    }
+                    
+                    // Atualizar tema se existir no arquivo
+                    if (jsonData.tema) {
+                        themeSettings = jsonData.tema;
+                        applyTheme();
+                    }
+                    
+                    saveToCloud().then(() => {
+                        alert(`${importedData.length} transações importadas com sucesso!`);
+                        updateUI();
+                        fileInput.value = '';
+                    });
+                }
+            } catch (error) {
+                console.error("Erro ao importar JSON:", error);
+                alert("Erro ao importar arquivo JSON. Verifique o formato!");
+            }
+        };
+        
+        reader.readAsText(file);
+    };
+
+    // Inicializar filtros e data atual
+    initFilters();
+    updateCurrentDate();
+    
+    // Configurar toggle de tema
+    document.getElementById('themeToggle').addEventListener('change', function() {
+        themeSettings.darkMode = this.checked;
+        applyTheme();
+        saveThemeSettings();
+    });
+    
+    // Carregar configurações do tema
+    loadThemeSettings();
+</script>
+</body>
+</html>
